@@ -54,7 +54,7 @@ static irqreturn_t bc_irq_handler(int irq, void *data)
 
 static irqreturn_t drm_irq_handler(int irq, void *data)
 {
-	printk(KERN_ALERT "Got an interrupt from drm\n");
+	printk(KERN_ALERT "Got an interrupt from drm, %d\n", gpio_get_value(GPIO_DRM_ID));
 	return IRQ_HANDLED;
 }
 
@@ -115,7 +115,7 @@ void set_drm_interrupt(void)
 
         BITCLR(HwGPIOF->GPEN, Hw8);              //set GPIOA2 as input mode
         BITCSET(HwGPIOF->GPPD0, 0x30000, 0x10);      //0xF0401000 , set GPIOA2 pull-high (01)
-        BITCSET(HwEINTSEL->EINTSEL2, HwEINTSEL2_EINT10_MASK, HwEINTSEL2_EINT10(SEL_GPIOF8)); //select EI10 as GPIOA2
+        BITCSET(HwEINTSEL->EINTSEL1, HwEINTSEL1_EINT5_MASK, HwEINTSEL1_EINT5(SEL_GPIOF8)); //select EI10 as GPIOA2
         BITSET(HwPIC->IEN0, TCC_ENABLE_BIT(IRQ_EI5));      //0xF0401000 , set enable EI10 interrupt
         BITSET(HwPIC->SEL0, TCC_ENABLE_BIT(IRQ_EI5));      //0xF0401018 , set EI10 as a nIRQ (0=FIQ)
         BITSET(HwPIC->POL0, TCC_ENABLE_BIT(IRQ_EI5));    //0xF0401038 , set EI10 as 0=low-active
@@ -124,7 +124,7 @@ void set_drm_interrupt(void)
         BITSET(HwPIC->INTMSK0, TCC_ENABLE_BIT(IRQ_EI5));   //0xF0401100 , set EI10 passes interrupt to IRQ or FIQ
 
         ret = request_irq(IRQ_EI5, drm_irq_handler,
-                IRQF_TRIGGER_RISING | IRQF_DISABLED, "DRM CAMERA", NULL);
+                IRQF_TRIGGER_FALLING | IRQF_DISABLED, "DRM CAMERA", NULL);
         if (ret) {
                 printk(KERN_ALERT "Can't request irq for back camera\n");
         }
