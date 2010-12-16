@@ -1,0 +1,10 @@
+del
+run
+sig
+module*.*
+Module.*
+*.o
+*.cmd
+.tmp*
+*.ko
+*.mod.c
