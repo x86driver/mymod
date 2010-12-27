@@ -144,7 +144,7 @@ void set_drm_interrupt(void)
         BITSET(HwPIC->INTMSK0, TCC_ENABLE_BIT(IRQ_EI5));   //0xF0401100 , set EI10 passes interrupt to IRQ or FIQ
 
         ret = request_irq(IRQ_EI5, drm_irq_handler,
-                IRQF_TRIGGER_FALLING | IRQF_DISABLED, "DRM CAMERA", NULL);
+                IRQF_TRIGGER_PROBE | IRQF_DISABLED, "DRM CAMERA", NULL);
         if (ret) {
                 printk(KERN_ALERT "Can't request irq for back camera\n");
         }
