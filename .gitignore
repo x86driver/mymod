@@ -8,3 +8,4 @@ Module.*
 .tmp*
 *.ko
 *.mod.c
+pid

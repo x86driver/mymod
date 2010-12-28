@@ -16,7 +16,11 @@ MODULE_LICENSE("Dual BSD/GPL");
 
 #define TCC_ENABLE_BIT(X) (1 << (X))
 
-//extern unsigned int camera_daemon_pid;
+extern unsigned int rear_camera_out_pid;
+extern unsigned int rear_camera_in_pid;
+extern unsigned int drm_out_pid;
+extern unsigned int drm_in_pid;
+
 void set_gpio_interrupt(void);
 void set_drm_interrupt(void);
 
@@ -29,35 +33,24 @@ static struct delayed_work drm_wq;
 void bc_do_tasklet(struct work_struct *work)
 {
 	printk(KERN_ALERT "Back camera is %s\n", (gpio_get_value(GPIO_VIDEO1_DET) == 0 ? "removed" : "inserted"));
-	if (gpio_get_value(GPIO_VIDEO1_DET) == 1) {	/* insert */
-//		struct task_struct *p = find_task_by_vpid(camera_daemon_pid);
-//		send_sig(SIGUSR1, p, 0);
-	} else {
-		int err;
-		char path[256] = "/system/bin/pkill";
-		char *argv[] = { path, "com.android.camera", NULL };
-		static char *envp[] = { "PATH=/system/bin:/sbin:/usr/sbin:/bin:/usr/bin", NULL };
-
-		err = call_usermodehelper(path, argv, envp, 1);
-		if (err < 0) {
-			printk("call_usermodehelper %d\n", err);
-		}
-	}
+	struct task_struct *p;
+	if (gpio_get_value(GPIO_VIDEO1_DET) == 0)
+		p = find_task_by_vpid(rear_camera_out_pid);
+	else
+		p = find_task_by_vpid(rear_camera_in_pid);
+	send_sig(SIGUSR1, p, 0);
 }
 
 void drm_do_tasklet(struct work_struct *work)
 {
-	int err;
-	char path[256] = "/system/bin/video_intent";
-	char state[] = {gpio_get_value(GPIO_DRM_ID) + '0', 0};
-	char *argv[] = { path, "d", state, NULL };
-	static char *envp[] = { "PATH=/system/bin:/sbin:/usr/sbin:/bin:/usr/bin", NULL };
+        printk(KERN_ALERT "Driving recorder is %s\n", (gpio_get_value(GPIO_DRM_ID) == 0 ? "removed" : "inserted"));
+        struct task_struct *p;
+        if (gpio_get_value(GPIO_DRM_ID) == 0)
+                p = find_task_by_vpid(drm_out_pid);
+        else
+                p = find_task_by_vpid(drm_in_pid);
+        send_sig(SIGUSR1, p, 0);
 
-	printk(KERN_ALERT "Driving recorder is %s\n", (gpio_get_value(GPIO_DRM_ID) == 0 ? "removed" : "inserted"));
-	err = call_usermodehelper(path, argv, envp, 1);
-	if (err < 0) {
-		printk("call_usermodehelper %d\n", err);
-	}
 }
 
 static irqreturn_t bc_irq_handler(int irq, void *data)
@@ -70,7 +63,6 @@ static irqreturn_t bc_irq_handler(int irq, void *data)
 
 static irqreturn_t drm_irq_handler(int irq, void *data)
 {
-//	printk(KERN_ALERT "Driving recorder is %s\n", (gpio_get_value(GPIO_DRM_ID) == 0 ? "removed" : "inserted"));
 	if (!work_pending(&drm_wq.work))
 		if (schedule_delayed_work(&drm_wq, 50) == 0)
 			printk(KERN_ALERT "Can't schedule drm work!\n");
@@ -82,9 +74,9 @@ static int hello_init(void)
 	printk(KERN_ALERT "========= Welcome to Hello World @ %s ==========\n", __TIMESTAMP__);
 	printk(KERN_ALERT "GPIO: %d\n", gpio_get_value(GPIO_VIDEO1_DET));
 
-//	INIT_DELAYED_WORK(&my.camera_wq, bc_do_tasklet);
+	INIT_DELAYED_WORK(&my.camera_wq, bc_do_tasklet);
 	INIT_DELAYED_WORK(&drm_wq, drm_do_tasklet);
-//	set_gpio_interrupt();
+	set_gpio_interrupt();
 	set_drm_interrupt();
 
 	return 0;
@@ -144,7 +136,7 @@ void set_drm_interrupt(void)
         BITSET(HwPIC->INTMSK0, TCC_ENABLE_BIT(IRQ_EI5));   //0xF0401100 , set EI10 passes interrupt to IRQ or FIQ
 
         ret = request_irq(IRQ_EI5, drm_irq_handler,
-                IRQF_TRIGGER_PROBE | IRQF_DISABLED, "DRM CAMERA", NULL);
+                IRQF_TRIGGER_FALLING | IRQF_DISABLED, "DRM CAMERA", NULL);
         if (ret) {
                 printk(KERN_ALERT "Can't request irq for back camera\n");
         }

@@ -23,6 +23,7 @@ int main(int argc, char **argv)
 			"com.garmin.android.apps.drivingrecorder.extra.DRIVING_RECORDER_STATE"};
 	char cmd[512];
 	snprintf(cmd, sizeof(cmd), "%s -a %s --ei %s %d", amcmd, action[device], extra[device], state);
+	printf("%s\n", cmd);
 	system(cmd);
 	return 0;
 }
